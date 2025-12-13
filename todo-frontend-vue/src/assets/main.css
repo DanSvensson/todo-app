@@ -1,0 +1,135 @@
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --bg: #f6f7fb;
+    --card: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --shadow: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -4px rgba(0,0,0,.08);
+}
+
+body {
+    margin: 0;
+    padding: 2rem;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.app {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin: 0 0 1rem;
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: .65rem .75rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    font-size: 1rem;
+    outline: none;
+    background: #fff;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 96px;
+}
+
+    input:focus, textarea:focus, select:focus {
+        border-color: #93c5fd;
+        box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+    }
+
+button {
+    padding: .55rem .9rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+}
+
+    button:hover {
+        background: #f3f4f6;
+    }
+
+    button.primary {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+    }
+
+        button.primary:hover {
+            background: #1d4ed8;
+        }
+
+.filters {
+    display: flex;
+    gap: .5rem;
+    margin: .75rem 0 1rem;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: .5rem;
+}
+
+li {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.task-left {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    min-width: 0;
+}
+
+.task-title {
+    font-weight: 650;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.task-meta {
+    color: var(--muted);
+    font-size: .9rem;
+}
+
+.done {
+    text-decoration: line-through;
+    color: var(--muted);
+}
+
+.error {
+    color: #b91c1c;
+    margin: .5rem 0;
+}
