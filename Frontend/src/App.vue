@@ -1,112 +1,3 @@
-<script setup lang="ts">
-    import { ref, onMounted, watch, computed } from "vue";
-    import type { TodoTask } from "./apiClient";
-    import {
-        getTasks,
-        createTask,
-        toggleTask,
-        deleteTask,
-    } from "./apiClient";
-
-    type Filter = "all" | "open" | "completed";
-
-    const tasks = ref<TodoTask[]>([]);
-    const filter = ref<Filter>("all");
-
-    const title = ref("");
-    const description = ref("");
-    const dueDate = ref("");
-    const priority = ref(0);
-
-    const loading = ref(false);
-    const error = ref("");
-
-    const openCount = computed(() => tasks.value.filter(t => !t.isCompleted).length);
-    const completedCount = computed(() => tasks.value.filter(t => t.isCompleted).length);
-
-    function priorityLabel(p: number) {
-      return p === 2 ? "Critical" : p === 1 ? "High" : "Normal";
-    }
-    function priorityClass(p: number) {
-      return p === 2 ? "p-critical" : p === 1 ? "p-high" : "p-normal";
-    }
-    function isOverdue(t: { dueDateUtc: string | null; isCompleted: boolean }) {
-      return !!t.dueDateUtc && !t.isCompleted && new Date(t.dueDateUtc) < new Date();
-    }
-
-    async function loadTasks() {
-        loading.value = true;
-        error.value = "";
-
-        let completed: boolean | null = null;
-        if (filter.value === "open") completed = false;
-        if (filter.value === "completed") completed = true;
-
-        try {
-            tasks.value = await getTasks(completed);
-        } catch {
-            error.value = "Failed to load tasks.";
-        } finally {
-            loading.value = false;
-        }
-    }
-
-    onMounted(loadTasks);
-    watch(filter, loadTasks);
-
-    async function addTask() {
-        if (!title.value.trim()) {
-            error.value = "Title is required.";
-            return;
-        }
-
-        try {
-            const created = await createTask({
-                title: title.value.trim(),
-                description: description.value || null,
-                dueDateUtc: dueDate.value
-                    ? new Date(dueDate.value).toISOString()
-                    : null,
-                priority: priority.value,
-            });
-
-            tasks.value.unshift(created);
-
-            title.value = "";
-            description.value = "";
-            dueDate.value = "";
-            priority.value = 0;
-        } catch {
-            error.value = "Failed to create task.";
-        }
-    }
-
-    async function toggle(id: number) {
-        try {
-            const updated = await toggleTask(id);
-            tasks.value = tasks.value.map((t) =>
-                t.id === updated.id ? updated : t
-            );
-        } catch {
-            error.value = "Failed to update task.";
-        }
-    }
-
-    async function remove(id: number) {
-        if (!confirm("Delete this task?")) return;
-
-        try {
-            await deleteTask(id);
-            tasks.value = tasks.value.filter((t) => t.id !== id);
-        } catch {
-            error.value = "Failed to delete task.";
-        }
-    }
-
-    function formatDate(value: string | null) {
-        return value ? new Date(value).toLocaleString() : "";
-    }
-</script>
 <template>
     <div class="app">
         <header class="header">
@@ -149,7 +40,7 @@
         <!-- Filters -->
         <div class="filters">
             <button type="button" class="btn pillbtn" @click="filter = 'all'">
-                All ({{ tasks.length }})
+                All ({{ allTasks.length }})
             </button>
             <button type="button" class="btn pillbtn" @click="filter = 'open'">
                 Open ({{ openCount }})
@@ -162,11 +53,13 @@
         <!-- Status -->
         <p v-if="loading" class="muted">Loading…</p>
         <p v-else-if="error" class="error">{{ error }}</p>
-        <p v-else-if="tasks.length === 0" class="muted">No tasks yet. Add one above.</p>
+        <p v-else-if="allTasks.length === 0" class="muted">
+            No tasks yet. Add one above.
+        </p>
 
         <!-- List -->
-        <ul v-if="tasks.length > 0" class="list">
-            <li v-for="t in tasks" :key="t.id" class="task">
+        <ul v-if="visibleTasks.length > 0" class="list">
+            <li v-for="t in visibleTasks" :key="t.id" class="task">
                 <label class="task-check">
                     <input type="checkbox"
                            :checked="t.isCompleted"
@@ -194,7 +87,9 @@
                         </span>
                         <span v-else class="muted">No due date</span>
                         <span class="dot">•</span>
-                        <span class="muted">Created: {{ formatDate(t.createdAtUtc) }}</span>
+                        <span class="muted">
+                            Created: {{ formatDate(t.createdAtUtc) }}
+                        </span>
                     </div>
 
                     <div v-if="t.description" class="task-desc">
@@ -203,10 +98,14 @@
                 </div>
 
                 <div class="task-actions">
-                    <button type="button" class="btn subtle" @click="toggle(t.id)">
+                    <button type="button"
+                            class="btn subtle"
+                            @click="toggle(t.id)">
                         {{ t.isCompleted ? "Reopen" : "Complete" }}
                     </button>
-                    <button type="button" class="btn danger" @click="remove(t.id)">
+                    <button type="button"
+                            class="btn danger"
+                            @click="remove(t.id)">
                         Delete
                     </button>
                 </div>
@@ -215,3 +114,111 @@
     </div>
 </template>
 
+<script setup lang="ts">
+    import { ref, computed, onMounted } from "vue";
+    import {
+        getTasks,
+        createTask,
+        toggleTask,
+        deleteTask,
+        type TodoTask
+    } from "./apiClient";
+
+    type Filter = "all" | "open" | "completed";
+
+    const allTasks = ref<TodoTask[]>([]);
+    const filter = ref<Filter>("all");
+
+    const title = ref("");
+    const description = ref("");
+    const dueDate = ref<string | null>(null);
+    const priority = ref(0);
+
+    const loading = ref(false);
+    const error = ref<string | null>(null);
+
+    /* Derived state */
+    const visibleTasks = computed(() => {
+        if (filter.value === "open")
+            return allTasks.value.filter(t => !t.isCompleted);
+        if (filter.value === "completed")
+            return allTasks.value.filter(t => t.isCompleted);
+        return allTasks.value;
+    });
+
+    const openCount = computed(
+        () => allTasks.value.filter(t => !t.isCompleted).length
+    );
+
+    const completedCount = computed(
+        () => allTasks.value.filter(t => t.isCompleted).length
+    );
+
+    /* Lifecycle */
+    onMounted(loadTasks);
+
+    /* API */
+    async function loadTasks() {
+        loading.value = true;
+        error.value = null;
+        try {
+            allTasks.value = await getTasks(null);
+        } catch {
+            error.value = "Failed to load tasks.";
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    async function addTask() {
+        if (!title.value.trim()) {
+            error.value = "Title is required.";
+            return;
+        }
+
+        error.value = null;
+
+        const created = await createTask({
+            title: title.value,
+            description: description.value || null,
+            dueDateUtc: dueDate.value,
+            priority: priority.value
+        });
+
+        allTasks.value.unshift(created);
+
+        title.value = "";
+        description.value = "";
+        dueDate.value = null;
+        priority.value = 0;
+    }
+
+    async function toggle(id: number) {
+        const updated = await toggleTask(id);
+        allTasks.value = allTasks.value.map(t =>
+            t.id === updated.id ? updated : t
+        );
+    }
+
+    async function remove(id: number) {
+        await deleteTask(id);
+        allTasks.value = allTasks.value.filter(t => t.id !== id);
+    }
+
+    /* Helpers */
+    function formatDate(value: string) {
+        return new Date(value).toLocaleString();
+    }
+
+    function priorityLabel(p: number) {
+        return p === 2 ? "Critical" : p === 1 ? "High" : "Normal";
+    }
+
+    function priorityClass(p: number) {
+        return p === 2 ? "p-critical" : p === 1 ? "p-high" : "p-normal";
+    }
+
+    function isOverdue(t: { dueDateUtc: string | null; isCompleted: boolean }) {
+        return !!t.dueDateUtc && !t.isCompleted && new Date(t.dueDateUtc) < new Date();
+    }
+</script>
