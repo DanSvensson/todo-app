@@ -2,8 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using TodoApp.Data;
 using TodoApp.Endpoints;
 using TodoApp.Services;
-using TodoApp.Data;
-using TodoApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
