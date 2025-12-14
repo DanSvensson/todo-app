@@ -21,7 +21,7 @@ cd backend
 dotnet restore
 dotnet run
 ```
-The API will print the listening URL in the console (example: http://localhost:5040).
+The API will print the listening URL in the console (example: http://localhost:5218).
 
 ## Running the Frontend (Vue)
 
@@ -32,3 +32,10 @@ npm install
 npm run dev
 ```
 Vite will print the app URL (example: http://localhost:5173).
+
+## Frontend → Backend configuration
+
+Create frontend/.env:
+```
+VITE_API_BASE_URL=http://localhost:5040
+```
